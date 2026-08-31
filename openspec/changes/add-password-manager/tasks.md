@@ -25,11 +25,11 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 - [x] 2.8 OCI image, compose example, reverse-proxy TLS docs; 60-second first-run test
 
 ## 3. web-client
-- [ ] 3.1 vault-core WASM build + TS bindings; KDF benchmark/parameter negotiation in browser
-- [ ] 3.2 SvelteKit shell: enrolment, unlock, list/detail, CRUD, search, generator, settings
-- [ ] 3.3 Session hardening: auto-lock, clipboard timed clear, strict CSP, zero external origins
-- [ ] 3.4 Responsive layouts (320 px→desktop); axe CI gate live from this task onward
-- [ ] 3.5 Import/export UI; security-activity view
+- [x] 3.1 vault-core WASM build + TS bindings; KDF benchmark/parameter negotiation in browser
+- [x] 3.2 SvelteKit shell: enrolment, unlock, list/detail, CRUD, search, generator, settings
+- [x] 3.3 Session hardening: auto-lock, clipboard timed clear, strict CSP, zero external origins
+- [x] 3.4 Responsive layouts (320 px→desktop); axe CI gate live from this task onward
+- [x] 3.5 Import/export UI; security-activity view
 
 ## 4. desktop-clients
 - [ ] 4.1 Tauri 2 shell reusing web UI with native vault-core; instance-URL onboarding
