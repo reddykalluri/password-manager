@@ -1,0 +1,13 @@
+# cargo-audit configuration.
+#
+# RUSTSEC-2023-0071 — "Marvin Attack" timing side-channel in the `rsa` crate.
+# There is NO upstream fix available. In this project `rsa` is reachable ONLY
+# through `sqlx-mysql`, an optional sqlx driver that we never enable: the server
+# uses SQLite by default and PostgreSQL via the `postgres` feature, and MySQL is
+# never compiled or run. The vulnerable RSA private-key operations are therefore
+# unreachable in every build we ship.
+#
+# Revisit and remove this ignore if: a fixed `rsa` release appears, or a MySQL
+# driver is ever enabled in this workspace.
+[advisories]
+ignore = ["RUSTSEC-2023-0071"]
