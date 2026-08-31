@@ -37,9 +37,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - uses: rustsec/audit-check@v2
+      # Install a prebuilt cargo-audit binary (no from-source compile, which was
+      # failing the rustsec/audit-check action), then scan the lockfile.
+      - uses: taiki-e/install-action@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          tool: cargo-audit
+      - run: cargo audit
 
   test:
     name: test (${{ matrix.name }})
