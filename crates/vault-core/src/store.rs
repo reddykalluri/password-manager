@@ -394,6 +394,12 @@ impl Vault {
         &self.keyring
     }
 
+    /// Ingest a record received from the server (public wrapper over
+    /// [`Self::apply_record`]) for clients that drive sync externally.
+    pub fn ingest_record(&mut self, rec: ItemRecord) -> Result<()> {
+        self.apply_record(rec)
+    }
+
     /// Insert or replace a record coming from sync, refreshing the index.
     pub(crate) fn apply_record(&mut self, rec: ItemRecord) -> Result<()> {
         if rec.deleted {
