@@ -1,0 +1,7 @@
+# Pinned to the toolchain installed on the dev machine so cargo does not attempt
+# an auto-update on every invocation. CI installs the cross-compile targets
+# (wasm32-unknown-unknown, aarch64-apple-ios, aarch64-linux-android) explicitly
+# per job via dtolnay/rust-toolchain.
+[toolchain]
+channel = "1.94.0"
+components = ["rustfmt", "clippy"]

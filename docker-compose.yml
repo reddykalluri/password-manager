@@ -1,0 +1,34 @@
+# Self-host example: one container, one volume.
+# First run: `docker compose up -d`, then open the instance and create the
+# first account. See docs/deployment.md for reverse-proxy TLS.
+
+services:
+  vault-server:
+    build: .
+    image: vault-server:latest
+    restart: unless-stopped
+    ports:
+      # Bind to localhost only; terminate TLS at the reverse proxy (see docs).
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - vault-data:/data
+    environment:
+      VAULT_BIND: 0.0.0.0:8080
+      VAULT_DATABASE_URL: sqlite:///data/vault.db
+      # Registration is closed by default; set to "open" to allow self-signup,
+      # or leave as-is and mint invites via the operator endpoint.
+      VAULT_REGISTRATION: invite
+      # Public origin used for WebAuthn; must match the browser-visible URL.
+      VAULT_PUBLIC_ORIGIN: https://vault.example.com
+      # Operator token guards /admin endpoints (invites, activity, backup).
+      VAULT_OPERATOR_TOKEN: ${VAULT_OPERATOR_TOKEN:?set VAULT_OPERATOR_TOKEN in .env}
+      # Stable token-signing key so sessions survive restarts.
+      VAULT_TOKEN_KEY: ${VAULT_TOKEN_KEY:?set VAULT_TOKEN_KEY in .env}
+      # Nightly local backups; add S3 vars (and build --features s3) to offsite.
+      VAULT_BACKUP_DIR: /data/backups
+      VAULT_BACKUP_INTERVAL_SECS: "86400"
+      RUST_LOG: info
+      VAULT_LOG_FORMAT: json
+
+volumes:
+  vault-data:

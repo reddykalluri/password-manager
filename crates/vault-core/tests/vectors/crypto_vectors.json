@@ -1,0 +1,24 @@
+{
+  "description": "Canonical vault-core crypto known-answer vectors. Every client implementation (WASM, Swift/Kotlin via UniFFI) MUST reproduce these bit-for-bit. Verified by crates/vault-core/tests/crypto_vectors.rs.",
+  "argon2id": {
+    "algorithm": "Argon2id",
+    "version": "0x13",
+    "params": { "mem_kib": 49152, "iterations": 3, "parallelism": 1, "output_len": 32 },
+    "password_utf8": "vault-core test vector",
+    "salt_hex": "000102030405060708090a0b0c0d0e0f",
+    "master_key_hex": "24edee7533ec4ecb0814c8d48e7ade898f92e52873dc02177b4dfddccc35591e"
+  },
+  "hkdf_sha256": {
+    "salt": null,
+    "ikm_hex": "24edee7533ec4ecb0814c8d48e7ade898f92e52873dc02177b4dfddccc35591e",
+    "info_utf8": "vault-core:v1:muk",
+    "okm_hex": "a61e707dfd17ad12828f6daaf43dac41e19c884bb1e578f9b1dd08a627a9d71d"
+  },
+  "xchacha20poly1305": {
+    "key_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "nonce_hex": "000102030405060708090a0b0c0d0e0f1011121314151617",
+    "aad_utf8": "vault-core-kat-aad",
+    "plaintext_utf8": "the quick brown fox",
+    "ciphertext_with_tag_hex": "eaaa6a5fe1a7e4cd586444bca425c6c82d2850901a3ccda0d4b8c36f3f4987ba33488c"
+  }
+}

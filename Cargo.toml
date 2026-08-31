@@ -1,0 +1,53 @@
+[workspace]
+resolver = "2"
+members = ["crates/vault-core", "crates/vault-server"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+license = "AGPL-3.0-or-later"
+repository = "https://example.invalid/password-manager"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+# Secrets discipline: forbid accidental prints of sensitive values in review.
+dbg_macro = "warn"
+todo = "warn"
+
+[workspace.dependencies]
+# Crypto (RustCrypto ecosystem)
+argon2 = "0.5"
+hkdf = "0.12"
+sha2 = "0.10"
+chacha20poly1305 = "0.10"
+zeroize = { version = "1.8", features = ["derive"] }
+rand_core = "0.6"
+rand = "0.8"
+subtle = "2.6"
+
+# Data / serialisation
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+time = { version = "0.3", features = ["serde", "formatting", "parsing", "macros"] }
+base64 = "0.22"
+thiserror = "1"
+
+# Server
+tokio = { version = "1", features = ["full"] }
+axum = "0.7"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "fs"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "macros", "migrate", "time", "uuid"] }
+
+[profile.release]
+# Secrets: keep panics unwinding so zeroize Drop still runs on panic paths.
+panic = "unwind"
+lto = "thin"
