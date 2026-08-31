@@ -12,7 +12,7 @@ env:
 jobs:
   fmt:
     name: rustfmt
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -22,7 +22,7 @@ jobs:
 
   clippy:
     name: clippy
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -33,7 +33,7 @@ jobs:
 
   audit:
     name: cargo-audit
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -48,16 +48,8 @@ jobs:
       - run: cargo audit --ignore RUSTSEC-2023-0071
 
   test:
-    name: test (${{ matrix.name }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: linux-native
-            os: ubuntu-latest
-          - name: macos-native
-            os: macos-latest
+    name: test
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -66,19 +58,16 @@ jobs:
 
   cross-build:
     name: cross-build (${{ matrix.target }})
-    runs-on: ${{ matrix.os }}
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
-        include:
+        target:
           # WASM crypto target for web client + extensions.
-          - target: wasm32-unknown-unknown
-            os: ubuntu-latest
+          - wasm32-unknown-unknown
           # Mobile cross-targets for UniFFI bindings.
-          - target: aarch64-linux-android
-            os: ubuntu-latest
-          - target: aarch64-apple-ios
-            os: macos-latest
+          - aarch64-linux-android
+          - aarch64-apple-ios
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
