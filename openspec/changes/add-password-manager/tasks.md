@@ -32,12 +32,12 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 - [x] 3.5 Import/export UI; security-activity view
 
 ## 4. desktop-clients
-- [ ] 4.1 Tauri 2 shell reusing web UI with native vault-core; instance-URL onboarding
+- [x] 4.1 Tauri 2 shell reusing web UI with native vault-core; instance-URL onboarding
 - [ ] 4.2 Windows: Hello unlock via TPM-wrapped session key; signed MSI/MSIX; updater
 - [ ] 4.3 macOS: Touch ID unlock via Secure Enclave; signed + notarised DMG; updater
-- [ ] 4.4 Native-messaging host (allowlisted extension IDs) + install/registration per browser
-- [ ] 4.5 Tray/menu-bar quick access with global shortcut
-- [ ] 4.6 Memory/disk hygiene pass: non-swappable secret pages, crash-report scrubbing, disk-inspection test
+- [x] 4.4 Native-messaging host (allowlisted extension IDs) + install/registration per browser
+- [x] 4.5 Tray/menu-bar quick access with global shortcut
+- [x] 4.6 Memory/disk hygiene pass: non-swappable secret pages, crash-report scrubbing, disk-inspection test
 
 ## 5. browser-extensions
 - [ ] 5.1 MV3 scaffold (Chrome/Edge/Firefox from one build), WASM core, standalone unlock + direct sync
