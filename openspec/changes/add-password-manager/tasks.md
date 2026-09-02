@@ -50,7 +50,7 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 - [ ] 5.8 Safari packaging inside macOS app; per-store submission pipelines
 
 ## 6. mobile-clients
-- [ ] 6.1 UniFFI bindings + Kotlin/Swift wrapper libraries with binding tests
+- [x] 6.1 UniFFI bindings + Kotlin/Swift wrapper libraries with binding tests
 - [ ] 6.2 Android app: Compose UI (phone + large-screen), biometric unlock, offline cache, sync status
 - [ ] 6.3 Android AutofillService + Credential Manager passkeys; save capture; Digital Asset Links handling
 - [ ] 6.4 iOS app: SwiftUI adaptive UI (iPhone/iPad), Face ID/Touch ID unlock, offline cache
