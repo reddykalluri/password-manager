@@ -455,3 +455,36 @@ fn autolock_policy() {
     vault.touch(start + time::Duration::seconds(20));
     assert!(!vault.should_lock(start + time::Duration::seconds(45)));
 }
+
+#[test]
+fn on_disk_cache_contains_no_plaintext() {
+    // The desktop/web local cache is the serialized sealed item records. This
+    // asserts that cache carries only ciphertext (desktop-clients spec: disk
+    // inspection finds no plaintext vault content).
+    let enrollment = enroll(&pw("master"), params()).unwrap();
+    let mut vault = Vault::from_keyring(enrollment.keyring, now());
+
+    let mut c = ItemContent::new_login("MyBankLogin");
+    if let ItemData::Login(l) = &mut c.data {
+        l.username = "alice@example.test".into();
+        l.password = "S3cretHunter2!".into();
+    }
+    c.notes = "recovery answer: fluffy".into();
+    vault.create(None, &c, now()).unwrap();
+
+    let records: Vec<ItemRecord> = vault.records().cloned().collect();
+    let bytes = serde_json::to_vec(&records).unwrap();
+    let haystack = String::from_utf8_lossy(&bytes);
+
+    for needle in [
+        "S3cretHunter2!",
+        "alice@example.test",
+        "MyBankLogin",
+        "fluffy",
+    ] {
+        assert!(
+            !haystack.contains(needle),
+            "plaintext '{needle}' leaked into the on-disk cache"
+        );
+    }
+}

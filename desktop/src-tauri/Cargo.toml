@@ -1,0 +1,37 @@
+# Standalone workspace so the desktop app has its own target/lockfile and does
+# not inherit the main workspace's lints/profile.
+[workspace]
+
+[package]
+name = "vault-desktop"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+description = "Self-hosted vault desktop app (Tauri 2, native vault-core)."
+
+[lib]
+name = "vault_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-http = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+parking_lot = "0.12"
+time = { version = "0.3", features = ["formatting", "parsing"] }
+uuid = { version = "1", features = ["v4"] }
+base64 = "0.22"
+rand = "0.8"
+opaque-ke = { version = "3", features = ["ristretto255"] }
+vault-core = { path = "../../crates/vault-core" }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[profile.release]
+panic = "unwind"

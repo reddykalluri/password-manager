@@ -2871,6 +2871,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "vault-nmh"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "vault-server"
 version = "0.1.0"
 dependencies = [
