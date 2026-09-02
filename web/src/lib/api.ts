@@ -3,6 +3,21 @@
 // state does not survive a hard reload).
 
 import type { AuditEntry, AuthTokens, DeviceView, ItemRecord } from './types';
+import { isTauri } from './backend';
+
+/** Cross-origin fetch: use the Tauri HTTP plugin on desktop (bypasses CORS to
+ * the operator's instance); plain fetch (same-origin) in the browser. */
+let fetchImpl: typeof fetch | null = null;
+async function httpFetch(input: string, init?: RequestInit): Promise<Response> {
+  if (!fetchImpl) {
+    fetchImpl = isTauri()
+      ? (await import('@tauri-apps/plugin-http')).fetch
+      : globalThis.fetch.bind(globalThis);
+  }
+  return fetchImpl(input, init);
+}
+
+const INSTANCE_KEY = 'vault_instance_url';
 
 export class ApiError extends Error {
   constructor(
@@ -17,10 +32,31 @@ export class ApiError extends Error {
 const PREFIX = '/api/v1';
 
 class Api {
-  /** Same-origin by default (served by the instance); configurable for dev. */
+  /** Same-origin by default (served by the instance). On desktop this is the
+   * onboarded instance URL, persisted (the URL is not a secret). */
   base = '';
   accessToken: string | null = null;
   refreshToken: string | null = null;
+
+  /** Load any persisted instance URL (desktop onboarding). */
+  loadInstance() {
+    try {
+      this.base = localStorage.getItem(INSTANCE_KEY) ?? '';
+    } catch {
+      this.base = '';
+    }
+  }
+  setInstance(url: string) {
+    this.base = url.replace(/\/$/, '');
+    try {
+      localStorage.setItem(INSTANCE_KEY, this.base);
+    } catch {
+      /* ignore */
+    }
+  }
+  hasInstance(): boolean {
+    return this.base.length > 0;
+  }
 
   private async request<T>(
     method: string,
@@ -31,7 +67,7 @@ class Api {
     const headers: Record<string, string> = {};
     if (body !== undefined) headers['content-type'] = 'application/json';
     if (auth && this.accessToken) headers['authorization'] = `Bearer ${this.accessToken}`;
-    const res = await fetch(`${this.base}${PREFIX}${path}`, {
+    const res = await httpFetch(`${this.base}${PREFIX}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body)

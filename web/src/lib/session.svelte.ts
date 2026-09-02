@@ -1,9 +1,10 @@
 // Central session state: auth flows, sync, auto-lock, and clipboard hygiene.
-// Uses Svelte 5 runes; imported as a singleton across the app.
+// Delegates all vault crypto to a VaultBackend (WASM in the browser, native
+// vault-core via Tauri on the desktop). Uses Svelte 5 runes.
 
 import { api, ApiError, isTokens, type SecondFactorChallenge } from './api';
-import { loadWasm, type WasmVault } from './wasm';
-import type { ItemContent, ItemRecord, KdfParams } from './types';
+import { createBackend, isTauri, type VaultBackend } from './backend';
+import type { ItemContent, ItemRecord } from './types';
 import { doWebauthnAssertion } from './webauthn';
 
 export interface Summary {
@@ -14,95 +15,96 @@ export interface Summary {
   favorite: boolean;
 }
 
-type Wasm = Awaited<ReturnType<typeof loadWasm>>;
-
 class Session {
   ready = $state(false);
   unlocked = $state(false);
   items = $state<Summary[]>([]);
   query = $state('');
-  announce = $state(''); // polite live-region text
+  announce = $state('');
   error = $state<string | null>(null);
   recoveryCode = $state<string | null>(null);
   lockTimeoutSecs = $state(300);
   clipboardClearSecs = $state(60);
   clipboardCountdown = $state(0);
 
-  private wasm: Wasm | null = null;
-  private vault: WasmVault | null = null;
+  private backend: VaultBackend = createBackend();
   private cursor = 0;
   private baseVersions = new Map<string, number>();
   private byId = new Map<string, Summary>();
-  private deviceName = 'Web browser';
+  private deviceName = 'Desktop/Web';
   private lockInterval: ReturnType<typeof setInterval> | null = null;
   private clipToken = 0;
+  private lastTouch = 0;
 
   async init() {
-    this.wasm = await loadWasm();
+    api.loadInstance();
     this.ready = true;
   }
 
-  private w(): Wasm {
-    if (!this.wasm) throw new Error('WASM not initialised');
-    return this.wasm;
+  /** Whether the app still needs instance-URL onboarding (desktop first run). */
+  needsOnboarding(): boolean {
+    return isTauri() && !api.hasInstance();
   }
-  private v() {
-    if (!this.vault) throw new Error('vault is locked');
-    return this.vault;
+
+  /** Adopt an already-unlocked native session (secondary windows, e.g. the
+   * quick-search window, share the desktop's native vault). */
+  async attach(): Promise<boolean> {
+    const unlocked = await this.backend.unlocked();
+    if (unlocked) {
+      this.unlocked = true;
+      await this.rebuildSummaries();
+      await this.refreshList();
+    }
+    return unlocked;
   }
 
   say(msg: string) {
     this.announce = '';
-    // Force the live region to re-announce identical messages.
     queueMicrotask(() => (this.announce = msg));
   }
 
-  // --- KDF params ---
+  // --- stateless helpers ---
   async negotiateParams(targetMs = 500): Promise<string> {
     try {
-      return await this.w().benchmarkKdf(targetMs);
+      return await this.backend.benchmarkKdf(targetMs);
     } catch {
-      return await this.w().defaultKdfParams();
+      return await this.backend.defaultKdfParams();
     }
+  }
+  async generatePassword(opts: unknown): Promise<string> {
+    return this.backend.generatePassword(JSON.stringify(opts));
+  }
+  async generatePassphrase(opts: unknown): Promise<string> {
+    return this.backend.generatePassphrase(JSON.stringify(opts));
+  }
+  async rateStrength(pw: string): Promise<{ score: number; entropy_bits: number; label: string }> {
+    return JSON.parse(await this.backend.rateStrength(pw));
   }
 
   // --- enrolment ---
-  async enroll(opts: {
-    username: string;
-    password: string;
-    inviteCode?: string;
-    paramsJson: string;
-  }) {
-    const w = this.w();
-    const vault = w.WasmVault.enroll(opts.password, opts.paramsJson);
-    const accountCrypto = JSON.parse(vault.accountCrypto());
-    const recovery = vault.takeRecoveryCode() ?? null;
+  async enroll(opts: { username: string; password: string; inviteCode?: string; paramsJson: string }) {
+    const { recoveryCode, accountCrypto } = await this.backend.enroll(opts.password, opts.paramsJson);
 
-    // OPAQUE registration.
-    const rs = JSON.parse(w.opaqueRegisterStart(opts.password));
+    const rs = JSON.parse(await this.backend.opaqueRegisterStart(opts.password));
     const { registration_response } = await api.registerStart(opts.username, rs.message);
-    const upload = w.opaqueRegisterFinish(rs.state, opts.password, registration_response);
+    const upload = await this.backend.opaqueRegisterFinish(rs.state, opts.password, registration_response);
     const tokens = await api.registerFinish({
       username: opts.username,
       registration_upload: upload,
-      account_crypto: accountCrypto,
+      account_crypto: JSON.parse(accountCrypto),
       invite_code: opts.inviteCode || undefined,
       device_name: this.deviceName
     });
     api.setTokens(tokens);
-
-    this.vault = vault;
-    this.recoveryCode = recovery;
+    this.recoveryCode = recoveryCode;
     await this.afterUnlock();
   }
 
   // --- unlock / login ---
   async unlock(opts: { username: string; password: string; totpCode?: string }) {
-    const w = this.w();
-    // OPAQUE login round trip.
-    const ls = JSON.parse(w.opaqueLoginStart(opts.password));
+    const ls = JSON.parse(await this.backend.opaqueLoginStart(opts.password));
     const start = await api.loginStart(opts.username, ls.message);
-    const finalization = w.opaqueLoginFinish(ls.state, opts.password, start.credential_response);
+    const finalization = await this.backend.opaqueLoginFinish(ls.state, opts.password, start.credential_response);
 
     let outcome = await api.loginFinish({
       flow_id: start.flow_id,
@@ -111,7 +113,6 @@ class Session {
       totp_code: opts.totpCode
     });
 
-    // WebAuthn second factor.
     if (!isTokens(outcome) && 'second_factor' in outcome) {
       const sf = (outcome as { second_factor: SecondFactorChallenge }).second_factor;
       const assertion = await doWebauthnAssertion(sf.webauthn_challenge);
@@ -124,16 +125,10 @@ class Session {
     if (!isTokens(outcome)) throw new Error('unexpected login response');
     api.setTokens(outcome);
 
-    // Pull crypto material + records, then unlock the vault in WASM.
     const crypto = await api.accountCrypto();
     const pulled = await api.pull(0);
     this.cursor = pulled.cursor;
-    const vault = w.WasmVault.unlock(
-      opts.password,
-      JSON.stringify(crypto),
-      JSON.stringify(pulled.records)
-    );
-    this.vault = vault;
+    await this.backend.unlock(opts.password, JSON.stringify(crypto), JSON.stringify(pulled.records));
     for (const r of pulled.records) this.baseVersions.set(r.id, r.version);
     await this.afterUnlock();
   }
@@ -141,18 +136,16 @@ class Session {
   private async afterUnlock() {
     this.unlocked = true;
     this.error = null;
-    this.v().setLockTimeoutSecs(BigInt(this.lockTimeoutSecs));
-    this.rebuildSummaries();
+    await this.backend.setLockTimeoutSecs(this.lockTimeoutSecs);
+    await this.rebuildSummaries();
+    await this.refreshList();
     this.startLockWatch();
     this.say('Vault unlocked.');
   }
 
-  lock() {
+  async lock() {
     this.stopLockWatch();
-    if (this.vault) {
-      this.vault.free(); // zeroises keys
-      this.vault = null;
-    }
+    await this.backend.lock();
     api.clearTokens();
     this.unlocked = false;
     this.items = [];
@@ -164,14 +157,17 @@ class Session {
   }
 
   touch() {
-    this.vault?.touch();
+    const now = Date.now();
+    if (now - this.lastTouch < 1000) return; // throttle IPC on desktop
+    this.lastTouch = now;
+    void this.backend.touch();
   }
 
   private startLockWatch() {
     this.stopLockWatch();
-    this.lockInterval = setInterval(() => {
-      if (this.vault?.shouldLock()) {
-        this.lock();
+    this.lockInterval = setInterval(async () => {
+      if (await this.backend.shouldLock()) {
+        await this.lock();
         this.say('Vault auto-locked after inactivity.');
       }
     }, 5000);
@@ -180,105 +176,92 @@ class Session {
     if (this.lockInterval) clearInterval(this.lockInterval);
     this.lockInterval = null;
   }
-
-  setLockTimeout(secs: number) {
+  async setLockTimeout(secs: number) {
     this.lockTimeoutSecs = secs;
-    this.vault?.setLockTimeoutSecs(BigInt(secs));
+    if (this.unlocked) await this.backend.setLockTimeoutSecs(secs);
   }
 
   // --- item model ---
-  getItem(id: string): ItemContent {
-    return JSON.parse(this.v().getItem(id));
+  async getItem(id: string): Promise<ItemContent> {
+    return JSON.parse(await this.backend.getItem(id));
   }
 
   async createItem(content: ItemContent): Promise<string> {
-    const id = this.v().createItem(JSON.stringify(content));
-    this.loadSummary(id);
-    this.refreshList();
+    const id = await this.backend.createItem(JSON.stringify(content));
+    await this.loadSummary(id);
+    await this.refreshList();
     await this.syncPush();
     this.say(`Created ${content.title}.`);
     return id;
   }
 
   async updateItem(id: string, content: ItemContent) {
-    this.v().updateItem(id, JSON.stringify(content));
+    await this.backend.updateItem(id, JSON.stringify(content));
     if (content.binned_at) this.byId.delete(id);
-    else this.loadSummary(id);
-    this.refreshList();
+    else await this.loadSummary(id);
+    await this.refreshList();
     await this.syncPush();
     this.say(`Saved ${content.title}.`);
   }
 
   async moveToBin(id: string) {
-    this.v().moveToBin(id);
+    await this.backend.moveToBin(id);
     this.byId.delete(id);
-    this.refreshList();
+    await this.refreshList();
     await this.syncPush();
     this.say('Moved to bin.');
   }
-
   async restoreFromBin(id: string) {
-    this.v().restoreFromBin(id);
-    this.loadSummary(id);
-    this.refreshList();
+    await this.backend.restoreFromBin(id);
+    await this.loadSummary(id);
+    await this.refreshList();
     await this.syncPush();
   }
 
-  history(id: string): Array<{ modified_at: string; content: ItemContent }> {
-    return JSON.parse(this.v().history(id));
+  async history(id: string): Promise<Array<{ modified_at: string; content: ItemContent }>> {
+    return JSON.parse(await this.backend.history(id));
   }
   async restoreRevision(id: string, index: number) {
-    this.v().restoreRevision(id, index);
-    this.loadSummary(id);
-    this.refreshList();
+    await this.backend.restoreRevision(id, index);
+    await this.loadSummary(id);
+    await this.refreshList();
     await this.syncPush();
     this.say('Revision restored.');
   }
 
-  // --- generator ---
-  generatePassword(opts: unknown): string {
-    return this.w().generatePassword(JSON.stringify(opts));
-  }
-  generatePassphrase(opts: unknown): string {
-    return this.w().generatePassphrase(JSON.stringify(opts));
-  }
-  rateStrength(pw: string): { score: number; entropy_bits: number; label: string } {
-    return JSON.parse(this.w().rateStrength(pw));
-  }
-
   // --- import / export ---
-  importPreview(kind: string, data: string) {
-    return JSON.parse(this.v().importPreview(kind, data));
+  async importPreview(kind: string, data: string) {
+    return JSON.parse(await this.backend.importPreview(kind, data));
   }
   async importCommit(items: ItemContent[]): Promise<number> {
-    const n = this.v().importCommit(JSON.stringify(items));
-    this.rebuildSummaries();
-    this.refreshList();
+    const n = await this.backend.importCommit(JSON.stringify(items));
+    await this.rebuildSummaries();
+    await this.refreshList();
     await this.syncPush();
     this.say(`Imported ${n} item(s).`);
     return n;
   }
-  exportEncrypted(password: string): string {
-    return this.v().exportEncrypted(password);
+  exportEncrypted(password: string): Promise<string> {
+    return this.backend.exportEncrypted(password);
   }
-  exportCsvGated(password: string): string {
-    return this.v().exportCsvGated(password);
+  exportCsvGated(password: string): Promise<string> {
+    return this.backend.exportCsvGated(password);
   }
 
   // --- account security ---
   async changeMasterPassword(current: string, next: string, extra: { totp_code?: string } = {}) {
     const paramsJson = await this.negotiateParams();
-    const updated = this.v().changeMasterPassword(current, next, paramsJson);
+    const updated = await this.backend.changeMasterPassword(current, next, paramsJson);
     await api.updateAccountCrypto(JSON.parse(updated), extra);
     this.say('Master password changed.');
   }
-  regenerateRecoveryCode(password: string): string {
-    const code = this.v().regenerateRecoveryCode(password);
+  async regenerateRecoveryCode(password: string): Promise<string> {
+    const code = await this.backend.regenerateRecoveryCode(password);
     this.recoveryCode = code;
     return code;
   }
   async uploadCryptoAfterRecoveryRegen(extra: { totp_code?: string } = {}) {
-    await api.updateAccountCrypto(JSON.parse(this.v().accountCrypto()), extra);
+    await api.updateAccountCrypto(JSON.parse(await this.backend.accountCrypto()), extra);
   }
 
   // --- clipboard ---
@@ -307,41 +290,35 @@ class Session {
   }
 
   // --- search / list ---
-  refreshList() {
-    if (!this.vault) {
+  async refreshList() {
+    if (!this.unlocked) {
       this.items = [];
       return;
     }
-    const ids = this.query.trim() ? this.vault.search(this.query) : this.vault.listActive();
+    const ids = this.query.trim() ? await this.backend.search(this.query) : await this.backend.listActive();
     this.items = ids.map((id) => this.byId.get(id)).filter((s): s is Summary => !!s);
   }
   setQuery(q: string) {
     this.query = q;
-    this.refreshList();
+    void this.refreshList();
   }
 
-  private loadSummary(id: string) {
-    const c: ItemContent = JSON.parse(this.v().getItem(id));
+  private async loadSummary(id: string) {
+    const c: ItemContent = JSON.parse(await this.backend.getItem(id));
     const username = c.data.type === 'login' ? c.data.username : '';
-    this.byId.set(id, {
-      id,
-      title: c.title,
-      username,
-      kind: c.data.type,
-      favorite: c.favorite
-    });
+    this.byId.set(id, { id, title: c.title, username, kind: c.data.type, favorite: c.favorite });
   }
-  private rebuildSummaries() {
+  private async rebuildSummaries() {
     this.byId.clear();
-    for (const id of this.v().listActive()) this.loadSummary(id);
+    for (const id of await this.backend.listActive()) await this.loadSummary(id);
   }
 
   // --- sync ---
   private async syncPush() {
-    const records: ItemRecord[] = JSON.parse(this.v().records());
+    const records: ItemRecord[] = JSON.parse(await this.backend.records());
     for (const rec of records) {
       const base = this.baseVersions.get(rec.id) ?? 0;
-      if (rec.version === base) continue; // unchanged since last sync
+      if (rec.version === base) continue;
       try {
         const res = await api.push(rec, base);
         this.baseVersions.set(rec.id, res.new_version);
@@ -349,10 +326,10 @@ class Session {
       } catch (e) {
         if (e instanceof ApiError && e.status === 409) {
           const current = (e.body as { current: ItemRecord }).current;
-          this.v().applyRecord(JSON.stringify(current)); // server wins
+          await this.backend.applyRecord(JSON.stringify(current));
           this.baseVersions.set(current.id, current.version);
-          this.loadSummary(current.id);
-          this.refreshList();
+          await this.loadSummary(current.id);
+          await this.refreshList();
         } else {
           throw e;
         }
@@ -361,17 +338,16 @@ class Session {
   }
 
   async pull() {
-    if (!this.vault) return;
+    if (!this.unlocked) return;
     const res = await api.pull(this.cursor);
     for (const rec of res.records) {
-      this.v().applyRecord(JSON.stringify(rec));
+      await this.backend.applyRecord(JSON.stringify(rec));
       this.baseVersions.set(rec.id, rec.version);
     }
     this.cursor = res.cursor;
-    this.rebuildSummaries();
-    this.refreshList();
+    await this.rebuildSummaries();
+    await this.refreshList();
   }
 }
 
 export const session = new Session();
-export type { KdfParams };

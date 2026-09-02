@@ -4,7 +4,20 @@
   let { password = '' }: { password?: string } = $props();
 
   // Text label accompanies the bar so colour is never the sole indicator.
-  let s = $derived(session.ready ? session.rateStrength(password) : { score: 0, label: 'unknown', entropy_bits: 0 });
+  let s = $state<{ score: number; label: string; entropy_bits: number }>({
+    score: 0,
+    label: 'unknown',
+    entropy_bits: 0
+  });
+
+  $effect(() => {
+    const pw = password;
+    if (!session.ready || !pw) {
+      s = { score: 0, label: 'unknown', entropy_bits: 0 };
+      return;
+    }
+    session.rateStrength(pw).then((r) => (s = r));
+  });
 </script>
 
 <div class="strength">

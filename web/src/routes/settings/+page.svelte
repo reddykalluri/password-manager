@@ -55,7 +55,7 @@
     e.preventDefault();
     recBusy = true;
     try {
-      recCode = session.regenerateRecoveryCode(recPw);
+      recCode = await session.regenerateRecoveryCode(recPw);
       await session.uploadCryptoAfterRecoveryRegen(recTotp ? { totp_code: recTotp } : {});
       recPw = recTotp = '';
     } catch (err) {

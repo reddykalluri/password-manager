@@ -3,7 +3,9 @@
   import { goto } from '$app/navigation';
 
   $effect(() => {
-    if (session.unlocked) goto('/vault');
+    if (!session.ready) return;
+    if (session.needsOnboarding()) goto('/onboard');
+    else if (session.unlocked) goto('/vault');
   });
 </script>
 

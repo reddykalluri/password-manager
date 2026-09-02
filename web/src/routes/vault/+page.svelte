@@ -15,10 +15,23 @@
     if (session.ready && !session.unlocked) goto('/unlock');
   });
 
-  let selected = $derived(selectedId && session.unlocked ? session.getItem(selectedId) : null);
-  let history = $derived(
-    selectedId && showHistory ? session.history(selectedId) : []
-  );
+  let selected = $state<ItemContent | null>(null);
+  let history = $state<Array<{ modified_at: string; content: ItemContent }>>([]);
+
+  // Load the selected item's content whenever the selection changes.
+  $effect(() => {
+    const id = selectedId;
+    if (id && session.unlocked && !editing) {
+      session.getItem(id).then((c) => (selected = c)).catch(() => (selected = null));
+    } else if (!id) {
+      selected = null;
+    }
+  });
+  $effect(() => {
+    const id = selectedId;
+    if (id && showHistory) session.history(id).then((h) => (history = h));
+    else history = [];
+  });
 
   function select(id: string) {
     selectedId = id;
@@ -32,9 +45,9 @@
     selectedId = null;
   }
 
-  function startEdit() {
+  async function startEdit() {
     if (!selectedId) return;
-    draft = session.getItem(selectedId);
+    draft = await session.getItem(selectedId);
     editing = true;
   }
 
@@ -112,7 +125,7 @@
           <label for="d-user">Username</label>
           <div class="copyrow">
             <input id="d-user" readonly value={selected.data.username} />
-            <button onclick={() => session.copySecret(selected.data.type === 'login' ? selected.data.username : '', 'Username')}>Copy</button>
+            <button onclick={() => session.copySecret(selected && selected.data.type === 'login' ? selected.data.username : '', 'Username')}>Copy</button>
           </div>
         {/if}
         {#if selected.data.password}
@@ -130,7 +143,7 @@
           <label for="d-totp">TOTP secret</label>
           <div class="copyrow">
             <input id="d-totp" readonly type="password" value={selected.data.totp} />
-            <button onclick={() => session.copySecret(selected.data.type === 'login' ? (selected.data.totp ?? '') : '', 'TOTP secret')}>Copy</button>
+            <button onclick={() => session.copySecret(selected && selected.data.type === 'login' ? (selected.data.totp ?? '') : '', 'TOTP secret')}>Copy</button>
           </div>
         {/if}
       {/if}

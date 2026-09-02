@@ -18,11 +18,11 @@
   let value = $state('');
   let genError = $state<string | null>(null);
 
-  function generate() {
+  async function generate() {
     genError = null;
     try {
       if (mode === 'password') {
-        value = session.generatePassword({
+        value = await session.generatePassword({
           length,
           lowercase,
           uppercase,
@@ -31,7 +31,7 @@
           exclude_ambiguous: excludeAmbiguous
         });
       } else {
-        value = session.generatePassphrase({
+        value = await session.generatePassphrase({
           words,
           separator,
           capitalize,

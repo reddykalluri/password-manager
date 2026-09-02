@@ -18,10 +18,10 @@
     const file = (e.target as HTMLInputElement).files?.[0];
     if (file) data = await file.text();
   }
-  function doPreview() {
+  async function doPreview() {
     importMsg = null;
     try {
-      preview = session.importPreview(kind, data);
+      preview = await session.importPreview(kind, data);
     } catch (err) {
       importMsg = (err as Error).message;
       preview = null;
@@ -48,11 +48,11 @@
 
   let exportPw = $state('');
   let exportMsg = $state<string | null>(null);
-  function exportEncrypted(e: SubmitEvent) {
+  async function exportEncrypted(e: SubmitEvent) {
     e.preventDefault();
     exportMsg = null;
     try {
-      const json = session.exportEncrypted(exportPw);
+      const json = await session.exportEncrypted(exportPw);
       download('vault-export.json', json, 'application/json');
       exportPw = '';
       exportMsg = 'Encrypted export downloaded.';
@@ -64,7 +64,7 @@
   let csvPw = $state('');
   let csvAck = $state(false);
   let csvMsg = $state<string | null>(null);
-  function exportCsv(e: SubmitEvent) {
+  async function exportCsv(e: SubmitEvent) {
     e.preventDefault();
     csvMsg = null;
     if (!csvAck) {
@@ -72,7 +72,7 @@
       return;
     }
     try {
-      const csv = session.exportCsvGated(csvPw);
+      const csv = await session.exportCsvGated(csvPw);
       download('vault-export.csv', csv, 'text/csv');
       csvPw = '';
       csvAck = false;
