@@ -1,5 +1,6 @@
 //! Desktop app entry: native vault-core commands, tray, and global shortcut.
 
+mod biometric;
 mod commands;
 mod hygiene;
 mod ipc;
@@ -16,6 +17,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(VaultState::default())
         .setup(|app| {
             tray::setup_tray(app)?;
@@ -65,6 +67,11 @@ pub fn run() {
             commands::set_lock_timeout_secs,
             commands::touch,
             commands::should_lock,
+            commands::biometric_available,
+            commands::biometric_enabled,
+            commands::biometric_enable,
+            commands::biometric_disable,
+            commands::biometric_unlock,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

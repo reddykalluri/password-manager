@@ -49,8 +49,27 @@ NativeMessagingHosts directories. Only allowlisted extension IDs
 (`crates/vault-nmh/src/allowlist.rs`) may talk to the host; replace the
 placeholder IDs with the real published store IDs at packaging time.
 
-## Not yet implemented
+## Biometric unlock & updates
 
-- **Windows** app (Hello/TPM unlock, MSI/MSIX, updater) — needs a Windows host.
-- **Biometric unlock** (Touch ID / Secure Enclave, Windows Hello) — needs app
-  signing + entitlements and real hardware to implement and verify.
+- **Touch ID unlock (macOS)** is implemented: on unlock the account key is
+  exported (`vault_core::keys::KeyRing::export_account_key`) and stored in the
+  Keychain (`src-tauri/src/biometric.rs`); `open_with_account_key` reconstructs
+  the vault without the master password. A reboot invalidates the session (a
+  master-password unlock is required again). Making retrieval actually **prompt
+  Touch ID** and invalidate on biometric-enrolment change needs a
+  `SecAccessControl` biometry flag + the app's biometric entitlement in a
+  **signed, notarised** build (`entitlements.plist`).
+- **Auto-update** is wired via `tauri-plugin-updater`; the updater public key and
+  release endpoint are in `tauri.conf.json`. Set `TAURI_SIGNING_PRIVATE_KEY` at
+  release time to sign update artifacts.
+- **Signing/notarisation (macOS)**: set `APPLE_SIGNING_IDENTITY`, `APPLE_ID`,
+  `APPLE_PASSWORD`, `APPLE_TEAM_ID` for `tauri build` to sign + notarise the DMG.
+
+## Not finished in this environment
+
+- **Signed + notarised DMG** (4.3) — code and config are in place, but producing
+  one needs an Apple Developer certificate + notarisation, and verifying the
+  Touch ID prompt needs a signed app on real hardware.
+- **Windows** (4.2) — MSI/NSIS bundle targets are configured, but **Windows
+  Hello / TPM unlock is not implemented** (needs a Windows host to write and
+  test) and signing needs a Windows code-signing certificate.

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 use uuid::Uuid;
 
-use vault_core::crypto::{KdfParams, SecretVec};
+use vault_core::crypto::{KdfParams, Key256, SecretVec};
 use vault_core::generator::{
     generate_passphrase, generate_password, rate_strength, PassphraseOptions, PasswordOptions,
 };
@@ -16,8 +16,8 @@ use vault_core::item::ItemContent;
 use vault_core::keys::{self, AccountCrypto};
 use vault_core::store::{ItemRecord, Vault};
 
-use crate::opaque;
 use crate::state::{now, Session, VaultState};
+use crate::{biometric, opaque};
 
 type R<T> = Result<T, String>;
 
@@ -484,4 +484,57 @@ pub fn should_lock(state: State<VaultState>) -> bool {
         .as_ref()
         .map(|s| s.vault.should_lock(now()))
         .unwrap_or(false)
+}
+
+// --- biometric unlock (Touch ID) -------------------------------------------
+
+#[tauri::command]
+pub fn biometric_available() -> bool {
+    biometric::available()
+}
+
+#[tauri::command]
+pub fn biometric_enabled() -> bool {
+    biometric::enabled()
+}
+
+/// Enable biometric unlock by stashing the current session's account key in the
+/// OS keystore. Requires the vault to be unlocked.
+#[tauri::command]
+pub fn biometric_enable(state: State<VaultState>) -> R<()> {
+    with(&state, |s| {
+        let key = s.vault.keyring().export_account_key();
+        biometric::store(key.expose())
+    })
+}
+
+#[tauri::command]
+pub fn biometric_disable() -> R<()> {
+    biometric::clear()
+}
+
+/// Unlock via biometrics: retrieve the account key from the keystore (Touch ID
+/// prompt on a signed build) and reconstruct the vault without the master
+/// password. Crypto material and cached records come from the caller.
+#[tauri::command]
+pub fn biometric_unlock(
+    state: State<VaultState>,
+    crypto_json: String,
+    records_json: String,
+) -> R<()> {
+    let bytes = biometric::load()?;
+    let arr: [u8; 32] = bytes
+        .as_slice()
+        .try_into()
+        .map_err(|_| "corrupt biometric session key".to_string())?;
+    let account_key = Key256::new(arr);
+    let crypto: AccountCrypto = serde_json::from_str(&crypto_json).map_err(e)?;
+    let records: Vec<ItemRecord> = serde_json::from_str(&records_json).map_err(e)?;
+    let vault = Vault::open_with_account_key(account_key, &crypto, records, now()).map_err(e)?;
+    *state.0.lock() = Some(Session {
+        vault,
+        crypto,
+        recovery: None,
+    });
+    Ok(())
 }

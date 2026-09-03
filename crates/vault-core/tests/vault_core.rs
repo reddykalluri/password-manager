@@ -488,3 +488,21 @@ fn on_disk_cache_contains_no_plaintext() {
         );
     }
 }
+
+#[test]
+fn biometric_session_export_and_restore() {
+    // The OS keystore (Secure Enclave / TPM) holds the exported account key,
+    // biometry-gated. Restoring from it reconstructs the vault without the
+    // master password (desktop/mobile biometric unlock).
+    let enrollment = enroll(&pw("master"), params()).unwrap();
+    let crypto = enrollment.crypto.clone();
+    let mut vault = Vault::from_keyring(enrollment.keyring, now());
+    let id = vault
+        .create(None, &ItemContent::new_login("Site"), now())
+        .unwrap();
+    let records: Vec<ItemRecord> = vault.records().cloned().collect();
+
+    let account_key = vault.keyring().export_account_key();
+    let vault2 = Vault::open_with_account_key(account_key, &crypto, records, now()).unwrap();
+    assert_eq!(vault2.get(id).unwrap().title, "Site");
+}
