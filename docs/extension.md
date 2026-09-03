@@ -9,14 +9,44 @@ via the macOS app (not built here — needs Xcode).
 ```bash
 cd extension
 npm install
-npm run build      # → dist/ (load unpacked in the browser)
+npm run build      # → dist/ (Chrome/Edge), dist-firefox/ (Firefox), + zips
 npm test           # vitest: matching/phishing, form detection, capture
 npm run typecheck
 ```
 
-`npm run build:wasm` in `web/` (or the desktop docs) must have produced
-`crates/vault-core-wasm/pkg` first; the build copies `vault_core_wasm_bg.wasm`
-into `dist/`.
+`crates/vault-core-wasm/pkg` must exist first (build it with
+`wasm-pack build crates/vault-core-wasm --target web --out-dir pkg --release`);
+the build copies `vault_core_wasm_bg.wasm` into each output folder.
+
+## Install locally (no store / developer account needed)
+
+The build emits ready-to-load, unpacked extensions and sideload zips:
+
+- `dist/` — Chrome / Edge
+- `dist-firefox/` — Firefox
+- `vault-extension-chrome.zip`, `vault-extension-firefox.zip`
+
+**Chrome / Edge**
+1. Open `chrome://extensions` (or `edge://extensions`).
+2. Turn on **Developer mode**.
+3. Click **Load unpacked** and select `extension/dist`.
+4. It persists across restarts. After `npm run build`, hit the extension's
+   **Reload** button to update.
+
+**Firefox** (temporary — until Firefox restarts)
+1. Open `about:debugging#/runtime/this-firefox`.
+2. **Load Temporary Add-on…** → pick `extension/dist-firefox/manifest.json`.
+   For a persistent install, sign the zip with your own Mozilla account
+   (`web-ext sign`) or use Developer/ESR Firefox with signature enforcement off.
+
+**Native-messaging host (optional — delegate to the desktop app)**
+A locally-loaded Chrome extension gets a generated ID (shown on the extensions
+page). Add it to `crates/vault-nmh/src/allowlist.rs`, then:
+
+```bash
+cargo build -p vault-nmh --release
+./target/release/vault-native-messaging-host install
+```
 
 ## Architecture
 

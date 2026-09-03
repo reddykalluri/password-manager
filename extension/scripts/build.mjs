@@ -1,51 +1,84 @@
-// Build the MV3 extension: bundle the service worker (ESM), the content and
-// injected scripts and the popup (IIFE), then copy the manifest, popup HTML, and
-// the vault-core WASM binary into dist/.
+// Build the MV3 extension into loadable, unpacked folders (no store account
+// needed) for Chromium (Chrome/Edge) and Firefox, plus zips for sideloading.
+//
+//   dist/          → Chrome/Edge (module service worker)
+//   dist-firefox/  → Firefox (event-page background)
+//   *.zip          → sideload/distribution archives
 
 import { build } from 'esbuild';
-import { copyFile, mkdir, rm } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const dist = resolve(root, 'dist');
+const chrome = resolve(root, 'dist');
+const firefox = resolve(root, 'dist-firefox');
+const wasm = resolve(root, '../crates/vault-core-wasm/pkg/vault_core_wasm_bg.wasm');
 
-await rm(dist, { recursive: true, force: true });
-await mkdir(dist, { recursive: true });
+const common = { bundle: true, target: 'es2022', minify: true, legalComments: 'none' };
 
-const common = {
-  bundle: true,
-  target: 'es2022',
-  minify: true,
-  legalComments: 'none',
-  logLevel: 'info'
-};
+async function bundleJs(outdir, backgroundFormat) {
+  // Service worker (Chrome: ESM module) or event-page background (Firefox: IIFE).
+  await build({
+    ...common,
+    entryPoints: { background: resolve(root, 'src/background.ts') },
+    outdir,
+    format: backgroundFormat
+  });
+  // Content, injected, and popup scripts are always self-contained IIFEs.
+  await build({
+    ...common,
+    entryPoints: {
+      content: resolve(root, 'src/content.ts'),
+      inject: resolve(root, 'src/inject.ts'),
+      popup: resolve(root, 'src/popup/popup.ts')
+    },
+    outdir,
+    format: 'iife'
+  });
+}
 
-// Service worker as an ES module.
-await build({
-  ...common,
-  entryPoints: { background: resolve(root, 'src/background.ts') },
-  outdir: dist,
-  format: 'esm'
-});
+async function copyAssets(outdir, manifest) {
+  await writeFile(resolve(outdir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  await copyFile(resolve(root, 'src/popup/popup.html'), resolve(outdir, 'popup.html'));
+  await copyFile(wasm, resolve(outdir, 'vault_core_wasm_bg.wasm'));
+}
 
-// Content, injected, and popup scripts as self-contained IIFEs.
-await build({
-  ...common,
-  entryPoints: {
-    content: resolve(root, 'src/content.ts'),
-    inject: resolve(root, 'src/inject.ts'),
-    popup: resolve(root, 'src/popup/popup.ts')
-  },
-  outdir: dist,
-  format: 'iife'
-});
+function zip(dir, out) {
+  try {
+    execFileSync('zip', ['-r', '-FS', '-q', out, '.'], { cwd: dir });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-await copyFile(resolve(root, 'public/manifest.json'), resolve(dist, 'manifest.json'));
-await copyFile(resolve(root, 'src/popup/popup.html'), resolve(dist, 'popup.html'));
-await copyFile(
-  resolve(root, '../crates/vault-core-wasm/pkg/vault_core_wasm_bg.wasm'),
-  resolve(dist, 'vault_core_wasm_bg.wasm')
-);
+// --- Chromium (Chrome / Edge) ---------------------------------------------
+await rm(chrome, { recursive: true, force: true });
+await mkdir(chrome, { recursive: true });
+await bundleJs(chrome, 'esm');
+const baseManifest = JSON.parse(await readFile(resolve(root, 'public/manifest.json'), 'utf8'));
+await copyAssets(chrome, baseManifest);
 
-console.log('built extension → dist/');
+// --- Firefox --------------------------------------------------------------
+await rm(firefox, { recursive: true, force: true });
+await mkdir(firefox, { recursive: true });
+await bundleJs(firefox, 'iife');
+const ffManifest = structuredClone(baseManifest);
+// Firefox uses an event-page background, not a service worker.
+ffManifest.background = { scripts: ['background.js'] };
+// `world: "MAIN"` content scripts need Firefox 128+.
+ffManifest.browser_specific_settings.gecko.strict_min_version = '128.0';
+await copyAssets(firefox, ffManifest);
+
+// --- sideload archives ----------------------------------------------------
+await rm(resolve(root, 'vault-extension-chrome.zip'), { force: true });
+await rm(resolve(root, 'vault-extension-firefox.zip'), { force: true });
+const zipped = zip(chrome, resolve(root, 'vault-extension-chrome.zip'));
+zip(firefox, resolve(root, 'vault-extension-firefox.zip'));
+
+console.log('built:');
+console.log('  dist/          (Chrome/Edge — load unpacked)');
+console.log('  dist-firefox/  (Firefox — load temporary add-on)');
+if (zipped) console.log('  vault-extension-chrome.zip / vault-extension-firefox.zip');
