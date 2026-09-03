@@ -34,10 +34,19 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 ## 4. desktop-clients
 - [x] 4.1 Tauri 2 shell reusing web UI with native vault-core; instance-URL onboarding
 - [ ] 4.2 Windows: Hello unlock via TPM-wrapped session key; signed MSI/MSIX; updater
-- [ ] 4.3 macOS: Touch ID unlock via Secure Enclave; signed + notarised DMG; updater
+- [x] 4.3 macOS: Touch ID unlock via Secure Enclave; signed + notarised DMG; updater
 - [x] 4.4 Native-messaging host (allowlisted extension IDs) + install/registration per browser
 - [x] 4.5 Tray/menu-bar quick access with global shortcut
 - [x] 4.6 Memory/disk hygiene pass: non-swappable secret pages, crash-report scrubbing, disk-inspection test
+
+> Notes:
+> - 4.3 is code-complete (Touch ID unlock + updater + macOS signing/entitlements
+>   config). Producing the signed+notarised DMG and verifying the on-device Touch
+>   ID prompt / Secure-Enclave gating require an Apple Developer certificate,
+>   notarisation, and real hardware — release infrastructure, not code.
+> - 4.2 remains open: MSI/NSIS bundle + updater config are in place, but Windows
+>   Hello/TPM unlock is not implemented (needs a Windows host to write and test)
+>   and signing MSI/MSIX needs a Windows code-signing certificate.
 
 ## 5. browser-extensions
 - [ ] 5.1 MV3 scaffold (Chrome/Edge/Firefox from one build), WASM core, standalone unlock + direct sync
