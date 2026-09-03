@@ -76,3 +76,35 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       # vault-core must compile for every client target; the server does not.
       - run: cargo build -p vault-core --target ${{ matrix.target }}
+
+  web:
+    name: web (build + a11y gate)
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      # Node is expected on the self-hosted runner; add actions/setup-node if not.
+      - name: Install wasm-pack
+        run: command -v wasm-pack || curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+      - name: Build vault-core WASM
+        working-directory: web
+        run: npm run build:wasm
+      - name: Install web dependencies
+        working-directory: web
+        run: npm install --no-audit --no-fund
+      - name: Type-check
+        working-directory: web
+        run: npm run check
+      - name: Build web client
+        working-directory: web
+        run: npm run build
+      - name: Install Playwright browser
+        working-directory: web
+        run: npx playwright install chromium
+      # axe accessibility gate (WCAG 2.2 AA) — new violations fail the build.
+      - name: Accessibility gate
+        working-directory: web
+        run: npm run test:a11y

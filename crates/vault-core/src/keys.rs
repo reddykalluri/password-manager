@@ -101,6 +101,24 @@ impl KeyRing {
         self.vault_keys.insert(vault_id, vault_key);
         Ok(VaultKeyRecord { vault_id, wrapped })
     }
+
+    /// Export the account key for storage in a hardware-backed OS keystore to
+    /// enable biometric unlock (Touch ID/Secure Enclave, Windows Hello/TPM).
+    ///
+    /// The returned key is highly sensitive: the caller MUST store it only in
+    /// biometry-gated, this-device-only hardware storage that is invalidated on
+    /// biometric-enrolment change, and require a master-password unlock again
+    /// after reboot. It is the "session key" the OS keystore wraps.
+    pub fn export_account_key(&self) -> Key256 {
+        self.account_key.clone()
+    }
+}
+
+/// Unlock using an account key previously exported via
+/// [`KeyRing::export_account_key`] (the biometric path), skipping the password
+/// KDF. `crypto` supplies the wrapped vault keys.
+pub fn unlock_with_account_key(account_key: Key256, crypto: &AccountCrypto) -> Result<KeyRing> {
+    unwrap_vaults(account_key, crypto)
 }
 
 /// Output of enrolment: server-storable material plus the one-time recovery code

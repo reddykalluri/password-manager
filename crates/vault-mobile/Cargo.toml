@@ -1,0 +1,31 @@
+[package]
+name = "vault-mobile"
+description = "UniFFI bindings for vault-core (Kotlin/Swift mobile wrappers)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# NOTE: does not inherit `[lints] workspace = true`: UniFFI generates `unsafe`
+# FFI scaffolding, which the workspace `unsafe_code = "forbid"` lint rejects.
+
+[lib]
+name = "vault_mobile"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi_bindgen.rs"
+
+[dependencies]
+uniffi = { version = "0.28", features = ["cli"] }
+vault-core = { path = "../vault-core" }
+opaque-ke = { version = "3", features = ["ristretto255"] }
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+time.workspace = true
+base64.workspace = true
+rand.workspace = true
+thiserror.workspace = true
+parking_lot = "0.12"

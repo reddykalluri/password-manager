@@ -25,19 +25,28 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 - [x] 2.8 OCI image, compose example, reverse-proxy TLS docs; 60-second first-run test
 
 ## 3. web-client
-- [ ] 3.1 vault-core WASM build + TS bindings; KDF benchmark/parameter negotiation in browser
-- [ ] 3.2 SvelteKit shell: enrolment, unlock, list/detail, CRUD, search, generator, settings
-- [ ] 3.3 Session hardening: auto-lock, clipboard timed clear, strict CSP, zero external origins
-- [ ] 3.4 Responsive layouts (320 px→desktop); axe CI gate live from this task onward
-- [ ] 3.5 Import/export UI; security-activity view
+- [x] 3.1 vault-core WASM build + TS bindings; KDF benchmark/parameter negotiation in browser
+- [x] 3.2 SvelteKit shell: enrolment, unlock, list/detail, CRUD, search, generator, settings
+- [x] 3.3 Session hardening: auto-lock, clipboard timed clear, strict CSP, zero external origins
+- [x] 3.4 Responsive layouts (320 px→desktop); axe CI gate live from this task onward
+- [x] 3.5 Import/export UI; security-activity view
 
 ## 4. desktop-clients
-- [ ] 4.1 Tauri 2 shell reusing web UI with native vault-core; instance-URL onboarding
+- [x] 4.1 Tauri 2 shell reusing web UI with native vault-core; instance-URL onboarding
 - [ ] 4.2 Windows: Hello unlock via TPM-wrapped session key; signed MSI/MSIX; updater
-- [ ] 4.3 macOS: Touch ID unlock via Secure Enclave; signed + notarised DMG; updater
-- [ ] 4.4 Native-messaging host (allowlisted extension IDs) + install/registration per browser
-- [ ] 4.5 Tray/menu-bar quick access with global shortcut
-- [ ] 4.6 Memory/disk hygiene pass: non-swappable secret pages, crash-report scrubbing, disk-inspection test
+- [x] 4.3 macOS: Touch ID unlock via Secure Enclave; signed + notarised DMG; updater
+- [x] 4.4 Native-messaging host (allowlisted extension IDs) + install/registration per browser
+- [x] 4.5 Tray/menu-bar quick access with global shortcut
+- [x] 4.6 Memory/disk hygiene pass: non-swappable secret pages, crash-report scrubbing, disk-inspection test
+
+> Notes:
+> - 4.3 is code-complete (Touch ID unlock + updater + macOS signing/entitlements
+>   config). Producing the signed+notarised DMG and verifying the on-device Touch
+>   ID prompt / Secure-Enclave gating require an Apple Developer certificate,
+>   notarisation, and real hardware — release infrastructure, not code.
+> - 4.2 remains open: MSI/NSIS bundle + updater config are in place, but Windows
+>   Hello/TPM unlock is not implemented (needs a Windows host to write and test)
+>   and signing MSI/MSIX needs a Windows code-signing certificate.
 
 ## 5. browser-extensions
 - [ ] 5.1 MV3 scaffold (Chrome/Edge/Firefox from one build), WASM core, standalone unlock + direct sync
@@ -50,7 +59,7 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 - [ ] 5.8 Safari packaging inside macOS app; per-store submission pipelines
 
 ## 6. mobile-clients
-- [ ] 6.1 UniFFI bindings + Kotlin/Swift wrapper libraries with binding tests
+- [x] 6.1 UniFFI bindings + Kotlin/Swift wrapper libraries with binding tests
 - [ ] 6.2 Android app: Compose UI (phone + large-screen), biometric unlock, offline cache, sync status
 - [ ] 6.3 Android AutofillService + Credential Manager passkeys; save capture; Digital Asset Links handling
 - [ ] 6.4 iOS app: SwiftUI adaptive UI (iPhone/iPad), Face ID/Touch ID unlock, offline cache

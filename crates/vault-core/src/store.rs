@@ -11,10 +11,10 @@ use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::crypto::{open, seal, SealedBlob};
+use crate::crypto::{open, seal, Key256, SealedBlob};
 use crate::error::{Error, Result};
 use crate::item::ItemContent;
-use crate::keys::{unlock, unlock_with_recovery, AccountCrypto, KeyRing};
+use crate::keys::{unlock, unlock_with_account_key, unlock_with_recovery, AccountCrypto, KeyRing};
 use crate::search::SearchIndex;
 
 /// Maximum retained prior revisions per item (vault-core spec: 20).
@@ -115,6 +115,18 @@ impl Vault {
         now: OffsetDateTime,
     ) -> Result<Self> {
         let keyring = unlock(password, crypto)?;
+        Self::hydrate(keyring, records, now)
+    }
+
+    /// Unlock via a biometric session key (the exported account key held in the
+    /// OS keystore), skipping the master-password KDF.
+    pub fn open_with_account_key(
+        account_key: Key256,
+        crypto: &AccountCrypto,
+        records: Vec<ItemRecord>,
+        now: OffsetDateTime,
+    ) -> Result<Self> {
+        let keyring = unlock_with_account_key(account_key, crypto)?;
         Self::hydrate(keyring, records, now)
     }
 
@@ -392,6 +404,12 @@ impl Vault {
     /// Access the keyring (for sync/rewrapping operations).
     pub fn keyring(&self) -> &KeyRing {
         &self.keyring
+    }
+
+    /// Ingest a record received from the server (public wrapper over
+    /// [`Self::apply_record`]) for clients that drive sync externally.
+    pub fn ingest_record(&mut self, rec: ItemRecord) -> Result<()> {
+        self.apply_record(rec)
     }
 
     /// Insert or replace a record coming from sync, refreshing the index.

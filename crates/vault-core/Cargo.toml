@@ -25,5 +25,13 @@ time.workspace = true
 base64.workspace = true
 thiserror.workspace = true
 
+# On wasm32 (web client + browser extensions), `getrandom` 0.2 and `uuid` need
+# a browser randomness backend selected explicitly. Enable their `js` features
+# so `OsRng` and `Uuid::new_v4` use the Web Crypto API. Native, iOS, and Android
+# targets are unaffected.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.2", features = ["js"] }
+uuid = { version = "1", features = ["js"] }
+
 [dev-dependencies]
 serde_json.workspace = true
