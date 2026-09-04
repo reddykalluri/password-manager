@@ -6,12 +6,14 @@ mod opaque;
 
 use std::sync::Arc;
 
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use vault_core::crypto::{KdfParams, SecretVec};
+use vault_core::crypto::{KdfParams, Key256, SecretVec};
 use vault_core::generator::{
     generate_passphrase as vc_passphrase, generate_password as vc_password, rate_strength,
     PassphraseOptions, PasswordOptions,
@@ -239,6 +241,43 @@ impl VaultHandle {
 
     pub fn take_recovery_code(&self) -> Option<String> {
         self.inner.lock().recovery.take()
+    }
+
+    /// Unlock via a biometric session key (the exported account key held in the
+    /// platform keystore: Android Keystore / iOS Secure Enclave), skipping the
+    /// master-password KDF.
+    #[uniffi::constructor]
+    pub fn unlock_with_account_key(
+        account_key_b64: String,
+        crypto_json: String,
+        records_json: String,
+    ) -> R<Arc<Self>> {
+        let bytes = STANDARD
+            .decode(account_key_b64.as_bytes())
+            .map_err(|_| VaultError::Message("invalid session key".into()))?;
+        let arr: [u8; 32] = bytes
+            .as_slice()
+            .try_into()
+            .map_err(|_| VaultError::Message("session key wrong length".into()))?;
+        let crypto: AccountCrypto = serde_json::from_str(&crypto_json).map_err(err)?;
+        let records: Vec<ItemRecord> = serde_json::from_str(&records_json).map_err(err)?;
+        let vault = Vault::open_with_account_key(Key256::new(arr), &crypto, records, now())
+            .map_err(err)?;
+        Ok(Arc::new(Self {
+            inner: Mutex::new(Inner {
+                vault,
+                crypto,
+                recovery: None,
+            }),
+        }))
+    }
+
+    /// Export the account key (base64) for storage in the platform keystore to
+    /// enable biometric unlock. Highly sensitive; the caller MUST wrap it with a
+    /// biometry-gated hardware key.
+    pub fn export_account_key(&self) -> String {
+        let g = self.inner.lock();
+        STANDARD.encode(g.vault.keyring().export_account_key().expose())
     }
 
     pub fn account_crypto(&self) -> R<String> {

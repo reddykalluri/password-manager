@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Associated domains for AutoFill / passkey scoping (edit per deployment). -->
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+        <string>webcredentials:vault.example.com</string>
+    </array>
+    <!-- Shared keychain group between the app and the credential-provider extension. -->
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)au.com.rodoskosmos.vault</string>
+    </array>
+    <key>com.apple.developer.authentication-services.autofill-credential-provider</key>
+    <true/>
+</dict>
+</plist>

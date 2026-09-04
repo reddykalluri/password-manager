@@ -1,0 +1,44 @@
+# XcodeGen project. Generate with `xcodegen` then open Vault.xcodeproj.
+# The vault-core native library must be cross-compiled and linked (see docs).
+name: Vault
+options:
+  bundleIdPrefix: au.com.rodoskosmos
+  deploymentTarget:
+    iOS: "16.0"
+
+targets:
+  Vault:
+    type: application
+    platform: iOS
+    sources:
+      - Vault
+      - path: VaultCore
+        # Generated UniFFI Swift bindings + FFI module map.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.rodoskosmos.vault
+        SWIFT_OBJC_BRIDGING_HEADER: VaultCore/vault_mobileFFI.h
+        INFOPLIST_FILE: Vault/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Vault/Vault.entitlements
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+    dependencies:
+      - target: CredentialProvider
+      # Link the vault-core static lib built for iOS (libvault_mobile.a).
+      - framework: VaultCore/libvault_mobile.a
+        embed: false
+
+  CredentialProvider:
+    type: app-extension
+    platform: iOS
+    sources:
+      - CredentialProvider
+      - path: VaultCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: au.com.rodoskosmos.vault.credentialprovider
+        SWIFT_OBJC_BRIDGING_HEADER: VaultCore/vault_mobileFFI.h
+        INFOPLIST_FILE: CredentialProvider/Info.plist
+        CODE_SIGN_ENTITLEMENTS: CredentialProvider/CredentialProvider.entitlements
+    dependencies:
+      - framework: VaultCore/libvault_mobile.a
+        embed: false

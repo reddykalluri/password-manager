@@ -70,12 +70,25 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 
 ## 6. mobile-clients
 - [x] 6.1 UniFFI bindings + Kotlin/Swift wrapper libraries with binding tests
-- [ ] 6.2 Android app: Compose UI (phone + large-screen), biometric unlock, offline cache, sync status
-- [ ] 6.3 Android AutofillService + Credential Manager passkeys; save capture; Digital Asset Links handling
-- [ ] 6.4 iOS app: SwiftUI adaptive UI (iPhone/iPad), Face ID/Touch ID unlock, offline cache
-- [ ] 6.5 iOS Credential Provider extension: password + passkey fill, save/update routing
-- [ ] 6.6 App privacy: switcher masking, FLAG_SECURE, backup exclusions; TOTP surfacing post-fill
+- [x] 6.2 Android app: Compose UI (phone + large-screen), biometric unlock, offline cache, sync status
+- [x] 6.3 Android AutofillService + Credential Manager passkeys; save capture; Digital Asset Links handling
+- [x] 6.4 iOS app: SwiftUI adaptive UI (iPhone/iPad), Face ID/Touch ID unlock, offline cache
+- [x] 6.5 iOS Credential Provider extension: password + passkey fill, save/update routing
+- [x] 6.6 App privacy: switcher masking, FLAG_SECURE, backup exclusions; TOTP surfacing post-fill
 - [ ] 6.7 Store/TestFlight distribution per resolved distribution question
+
+> Notes:
+> - 6.2–6.6 are implemented as source in `mobile/android` (Kotlin/Compose) and
+>   `mobile/ios` (Swift/SwiftUI) on top of the UniFFI bindings, but are **not
+>   built or tested here** — that needs Android Studio / Xcode and the
+>   cross-compiled native library (see docs/mobile.md). Only the UniFFI layer
+>   (6.1) is verified in-repo.
+> - Passkey provider ceremonies (Android Credential Manager, iOS Credential
+>   Provider) are integration skeletons wired to the vault; the FIDO2 flows are
+>   completed with on-device testing.
+> - "TOTP surfacing post-fill" shows/copies the stored TOTP secret; live rolling
+>   codes need a TOTP generator exposed from vault-core (follow-up).
+> - 6.7 (store/TestFlight) is intentionally out — no developer accounts.
 
 ## 7. accessibility and hardening gates (release-blocking)
 - [ ] 7.1 Manual WCAG 2.2 AA audit per surface (screen readers per platform, keyboard-only runs)
