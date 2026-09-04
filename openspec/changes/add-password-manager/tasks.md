@@ -49,14 +49,24 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 >   and signing MSI/MSIX needs a Windows code-signing certificate.
 
 ## 5. browser-extensions
-- [ ] 5.1 MV3 scaffold (Chrome/Edge/Firefox from one build), WASM core, standalone unlock + direct sync
-- [ ] 5.2 Popup: matched-items-first, search, copy, generator, inline new item
-- [ ] 5.3 Content scripts: form detection (heuristics + updatable curated rules), fill on user gesture, multi-step flows, iframe origin checks
-- [ ] 5.4 Save/update capture with dedupe and never-ask lists
-- [ ] 5.5 PSL-based domain matching + phishing warnings; hostile-page test suite
-- [ ] 5.6 Native-messaging delegation to desktop app
+- [x] 5.1 MV3 scaffold (Chrome/Edge/Firefox from one build), WASM core, standalone unlock + direct sync
+- [x] 5.2 Popup: matched-items-first, search, copy, generator, inline new item
+- [x] 5.3 Content scripts: form detection (heuristics + updatable curated rules), fill on user gesture, multi-step flows, iframe origin checks
+- [x] 5.4 Save/update capture with dedupe and never-ask lists
+- [x] 5.5 PSL-based domain matching + phishing warnings; hostile-page test suite
+- [x] 5.6 Native-messaging delegation to desktop app
 - [ ] 5.7 Passkey create/assert where hooks exist
 - [ ] 5.8 Safari packaging inside macOS app; per-store submission pipelines
+
+> Notes:
+> - 5.1–5.6 are implemented; the core logic (PSL matching + phishing, form
+>   detection, save-capture dedupe/never-ask) is unit-tested and the extension
+>   builds. Runtime browser behaviour (fill, WASM-in-service-worker, native
+>   messaging) is not automatically tested — load `extension/dist` unpacked.
+> - 5.7 is partial: a non-interfering page-world hook observes WebAuthn calls and
+>   delegates to the platform; completing assertions from vault passkeys is not
+>   yet implemented.
+> - 5.8 needs Xcode (Safari packaging) and store developer accounts.
 
 ## 6. mobile-clients
 - [x] 6.1 UniFFI bindings + Kotlin/Swift wrapper libraries with binding tests

@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Vault",
+  "version": "0.1.0",
+  "description": "Self-hosted zero-knowledge password manager: fill, save, search, generate, passkeys.",
+  "action": { "default_popup": "popup.html", "default_title": "Vault" },
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": true
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["inject.js"],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": true
+    }
+  ],
+  "permissions": ["activeTab", "tabs", "scripting", "storage", "nativeMessaging", "clipboardWrite"],
+  "host_permissions": ["<all_urls>"],
+  "web_accessible_resources": [
+    { "resources": ["vault_core_wasm_bg.wasm"], "matches": ["<all_urls>"] }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "browser_specific_settings": {
+    "gecko": { "id": "vault@rodoskosmos.com.au", "strict_min_version": "121.0" }
+  }
+}
