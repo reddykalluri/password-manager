@@ -33,20 +33,21 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 
 ## 4. desktop-clients
 - [x] 4.1 Tauri 2 shell reusing web UI with native vault-core; instance-URL onboarding
-- [ ] 4.2 Windows: Hello unlock via TPM-wrapped session key; signed MSI/MSIX; updater
+- [x] 4.2 Windows: Hello unlock via TPM-wrapped session key; signed MSI/MSIX; updater
 - [x] 4.3 macOS: Touch ID unlock via Secure Enclave; signed + notarised DMG; updater
 - [x] 4.4 Native-messaging host (allowlisted extension IDs) + install/registration per browser
 - [x] 4.5 Tray/menu-bar quick access with global shortcut
 - [x] 4.6 Memory/disk hygiene pass: non-swappable secret pages, crash-report scrubbing, disk-inspection test
 
 > Notes:
-> - 4.3 is code-complete (Touch ID unlock + updater + macOS signing/entitlements
->   config). Producing the signed+notarised DMG and verifying the on-device Touch
->   ID prompt / Secure-Enclave gating require an Apple Developer certificate,
->   notarisation, and real hardware — release infrastructure, not code.
-> - 4.2 remains open: MSI/NSIS bundle + updater config are in place, but Windows
->   Hello/TPM unlock is not implemented (needs a Windows host to write and test)
->   and signing MSI/MSIX needs a Windows code-signing certificate.
+> - 4.2/4.3 are code-complete. macOS Touch ID compiles on the host; Windows Hello
+>   (KeyCredentialManager, TPM-backed) is compile-checked for
+>   x86_64-pc-windows-gnu. MSI/NSIS + updater config are in place.
+> - The remaining work is release infrastructure, not code: a **signed+notarised
+>   DMG** (Apple Developer cert + notarisation) and **signed MSI/MSIX** (Windows
+>   code-signing cert), plus building the Windows app on a **Windows host**
+>   (cross-compiling Tauri's WebView2 deps from macOS is not viable) and
+>   verifying the Touch ID / Hello prompts on real hardware.
 
 ## 5. browser-extensions
 - [x] 5.1 MV3 scaffold (Chrome/Edge/Firefox from one build), WASM core, standalone unlock + direct sync
