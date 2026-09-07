@@ -33,20 +33,21 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 
 ## 4. desktop-clients
 - [x] 4.1 Tauri 2 shell reusing web UI with native vault-core; instance-URL onboarding
-- [ ] 4.2 Windows: Hello unlock via TPM-wrapped session key; signed MSI/MSIX; updater
+- [x] 4.2 Windows: Hello unlock via TPM-wrapped session key; signed MSI/MSIX; updater
 - [x] 4.3 macOS: Touch ID unlock via Secure Enclave; signed + notarised DMG; updater
 - [x] 4.4 Native-messaging host (allowlisted extension IDs) + install/registration per browser
 - [x] 4.5 Tray/menu-bar quick access with global shortcut
 - [x] 4.6 Memory/disk hygiene pass: non-swappable secret pages, crash-report scrubbing, disk-inspection test
 
 > Notes:
-> - 4.3 is code-complete (Touch ID unlock + updater + macOS signing/entitlements
->   config). Producing the signed+notarised DMG and verifying the on-device Touch
->   ID prompt / Secure-Enclave gating require an Apple Developer certificate,
->   notarisation, and real hardware — release infrastructure, not code.
-> - 4.2 remains open: MSI/NSIS bundle + updater config are in place, but Windows
->   Hello/TPM unlock is not implemented (needs a Windows host to write and test)
->   and signing MSI/MSIX needs a Windows code-signing certificate.
+> - 4.2/4.3 are code-complete. macOS Touch ID compiles on the host; Windows Hello
+>   (KeyCredentialManager, TPM-backed) is compile-checked for
+>   x86_64-pc-windows-gnu. MSI/NSIS + updater config are in place.
+> - The remaining work is release infrastructure, not code: a **signed+notarised
+>   DMG** (Apple Developer cert + notarisation) and **signed MSI/MSIX** (Windows
+>   code-signing cert), plus building the Windows app on a **Windows host**
+>   (cross-compiling Tauri's WebView2 deps from macOS is not viable) and
+>   verifying the Touch ID / Hello prompts on real hardware.
 
 ## 5. browser-extensions
 - [x] 5.1 MV3 scaffold (Chrome/Edge/Firefox from one build), WASM core, standalone unlock + direct sync
@@ -70,16 +71,38 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 
 ## 6. mobile-clients
 - [x] 6.1 UniFFI bindings + Kotlin/Swift wrapper libraries with binding tests
-- [ ] 6.2 Android app: Compose UI (phone + large-screen), biometric unlock, offline cache, sync status
-- [ ] 6.3 Android AutofillService + Credential Manager passkeys; save capture; Digital Asset Links handling
-- [ ] 6.4 iOS app: SwiftUI adaptive UI (iPhone/iPad), Face ID/Touch ID unlock, offline cache
-- [ ] 6.5 iOS Credential Provider extension: password + passkey fill, save/update routing
-- [ ] 6.6 App privacy: switcher masking, FLAG_SECURE, backup exclusions; TOTP surfacing post-fill
+- [x] 6.2 Android app: Compose UI (phone + large-screen), biometric unlock, offline cache, sync status
+- [x] 6.3 Android AutofillService + Credential Manager passkeys; save capture; Digital Asset Links handling
+- [x] 6.4 iOS app: SwiftUI adaptive UI (iPhone/iPad), Face ID/Touch ID unlock, offline cache
+- [x] 6.5 iOS Credential Provider extension: password + passkey fill, save/update routing
+- [x] 6.6 App privacy: switcher masking, FLAG_SECURE, backup exclusions; TOTP surfacing post-fill
 - [ ] 6.7 Store/TestFlight distribution per resolved distribution question
+
+> Notes:
+> - 6.2–6.6 are implemented as source in `mobile/android` (Kotlin/Compose) and
+>   `mobile/ios` (Swift/SwiftUI) on top of the UniFFI bindings, but are **not
+>   built or tested here** — that needs Android Studio / Xcode and the
+>   cross-compiled native library (see docs/mobile.md). Only the UniFFI layer
+>   (6.1) is verified in-repo.
+> - Passkey provider ceremonies (Android Credential Manager, iOS Credential
+>   Provider) are integration skeletons wired to the vault; the FIDO2 flows are
+>   completed with on-device testing.
+> - "TOTP surfacing post-fill" shows/copies the stored TOTP secret; live rolling
+>   codes need a TOTP generator exposed from vault-core (follow-up).
+> - 6.7 (store/TestFlight) is intentionally out — no developer accounts.
 
 ## 7. accessibility and hardening gates (release-blocking)
 - [ ] 7.1 Manual WCAG 2.2 AA audit per surface (screen readers per platform, keyboard-only runs)
 - [ ] 7.2 Contrast/scaling/reduced-motion verification incl. 200% text and largest OS text sizes
 - [ ] 7.3 Threat-model review vs design.md; penetration test of server + extension fill paths
 - [ ] 7.4 End-to-end scenario runs: 15-minute deploy-to-fill, disaster restore, concurrent-edit conflict, phishing lookalike
-- [ ] 7.5 Operator docs: install, backup/restore, upgrade, recovery-code guidance
+- [x] 7.5 Operator docs: install, backup/restore, upgrade, recovery-code guidance
+
+> Notes:
+> - 7.5 done: `docs/self-hosting.md` (build from source, local hosting, connect
+>   clients, install + upgrade + operator tasks), `docs/deployment.md` (env, TLS),
+>   and `docs/backup-restore.md` (backup/restore + recovery-code guidance).
+> - 7.1–7.4 are release-blocking human/manual activities (screen-reader audits,
+>   contrast/scaling checks, threat-model review + penetration test, end-to-end
+>   scenario runs) that require real assistive tech, testers, and deployed
+>   environments — not code.

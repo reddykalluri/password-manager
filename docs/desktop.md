@@ -64,12 +64,20 @@ placeholder IDs with the real published store IDs at packaging time.
   release time to sign update artifacts.
 - **Signing/notarisation (macOS)**: set `APPLE_SIGNING_IDENTITY`, `APPLE_ID`,
   `APPLE_PASSWORD`, `APPLE_TEAM_ID` for `tauri build` to sign + notarise the DMG.
+- **Windows Hello unlock** is implemented (`src-tauri/src/biometric.rs`, Windows
+  path): the exported account key is sealed under a key derived from a
+  deterministic `KeyCredentialManager` (TPM-backed) Hello signature, so
+  unwrapping requires a Hello prompt; reboot invalidates the session. This path
+  is compile-checked for `x86_64-pc-windows-gnu` but not run here.
+- **Windows bundles**: MSI (WiX) and NSIS targets are configured. MSIX needs
+  separate packaging (`makeappx`); signing MSI/MSIX needs a Windows
+  code-signing certificate (set `WINDOWS_CERTIFICATE*` for `tauri build`).
 
 ## Not finished in this environment
 
-- **Signed + notarised DMG** (4.3) — code and config are in place, but producing
-  one needs an Apple Developer certificate + notarisation, and verifying the
-  Touch ID prompt needs a signed app on real hardware.
-- **Windows** (4.2) — MSI/NSIS bundle targets are configured, but **Windows
-  Hello / TPM unlock is not implemented** (needs a Windows host to write and
-  test) and signing needs a Windows code-signing certificate.
+- **Signed + notarised DMG** (4.3) and **signed MSI/MSIX** (4.2) — the code and
+  bundle/updater config are in place, but producing signed artifacts needs an
+  Apple Developer certificate + notarisation and a Windows code-signing
+  certificate respectively, and verifying the Touch ID / Windows Hello prompts
+  needs the signed apps on real hardware. Building the Windows app itself needs a
+  Windows host (cross-compiling Tauri's WebView2 deps from macOS is not viable).

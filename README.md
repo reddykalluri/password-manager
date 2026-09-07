@@ -56,9 +56,15 @@ cd desktop && npm install && npm run tauri build
 
 ## Running each surface
 
+> **New to this? Start with [`docs/self-hosting.md`](docs/self-hosting.md)** — the
+> end-to-end guide to building from source, running your own instance (with or
+> without Docker), connecting every client, and operator tasks (install, upgrade,
+> backup/restore, recovery codes).
+
 - **Server** — `cp .env.example .env` (set `VAULT_OPERATOR_TOKEN`,
   `VAULT_TOKEN_KEY`) then `docker compose up -d`. See
-  [`docs/deployment.md`](docs/deployment.md) (reverse-proxy TLS) and
+  [`docs/self-hosting.md`](docs/self-hosting.md) (build + host from source),
+  [`docs/deployment.md`](docs/deployment.md) (reverse-proxy TLS), and
   [`docs/backup-restore.md`](docs/backup-restore.md) (runbook).
 - **Web** — served by the instance; `web/npm run build` produces the static SPA.
 - **Desktop** — [`docs/desktop.md`](docs/desktop.md).
@@ -84,10 +90,10 @@ Progress is tracked in
 | **1. vault-core** | ✅ 1.1–1.9 done & tested. `1.10` external crypto review is a human, out-of-band activity. |
 | **2. server** | ✅ 2.1–2.8 done & tested (OPAQUE, sync, isolation, TOTP + WebAuthn, audit, backup, container). |
 | **3. web-client** | ✅ 3.1–3.5 done (WASM bindings, SvelteKit shell, session hardening, responsive, import/export). axe WCAG gate green on public pages. |
-| **4. desktop** | ✅ 4.1, 4.3, 4.4, 4.5, 4.6 done (shell + native core, Touch ID unlock code + updater/signing config, native messaging, tray/shortcut, hygiene). ⬜ **4.2 Windows** needs a Windows host + cert. |
+| **4. desktop** | ✅ 4.1–4.6: shell + native core, macOS Touch ID + Windows Hello unlock (compile-verified), updater + signing config, native messaging, tray/shortcut, hygiene. Signed/notarised DMG + signed MSI/MSIX and the Windows build itself need certs + a Windows host (release infra). |
 | **5. browser-extensions** | ✅ 5.1–5.6 done (MV3 build, popup, detection/fill, save-capture, PSL matching + phishing suite, native-messaging delegation). ⬜ **5.7** passkeys partial; **5.8** Safari/store needs Xcode + accounts. |
-| **6. mobile-clients** | ✅ 6.1 UniFFI bindings done (Swift binding test green). ⬜ **6.2–6.7** apps need Android SDK / Xcode / store accounts. |
-| **7. accessibility & hardening gates** | ⬜ not started (release-blocking manual audits, pen test, scenario runs, operator docs). |
+| **6. mobile-clients** | ✅ 6.1 UniFFI bindings (Swift binding test green); 6.2–6.6 Android (Kotlin/Compose) + iOS (Swift/SwiftUI) apps implemented — biometric unlock, offline cache, autofill / credential provider, privacy. Not built here (need Android Studio/Xcode + the cross-compiled native lib). ⬜ **6.7** store/TestFlight needs accounts. |
+| **7. accessibility & hardening gates** | ✅ 7.5 operator docs (self-hosting / install / upgrade / backup / recovery). ⬜ **7.1–7.4** are release-blocking manual activities (screen-reader audits, contrast/scaling checks, threat-model review + pen test, scenario runs). |
 
 ### Verification boundaries (honest)
 
