@@ -96,4 +96,13 @@ Ordered by dependency. Each numbered group is independently reviewable; nothing 
 - [ ] 7.2 Contrast/scaling/reduced-motion verification incl. 200% text and largest OS text sizes
 - [ ] 7.3 Threat-model review vs design.md; penetration test of server + extension fill paths
 - [ ] 7.4 End-to-end scenario runs: 15-minute deploy-to-fill, disaster restore, concurrent-edit conflict, phishing lookalike
-- [ ] 7.5 Operator docs: install, backup/restore, upgrade, recovery-code guidance
+- [x] 7.5 Operator docs: install, backup/restore, upgrade, recovery-code guidance
+
+> Notes:
+> - 7.5 done: `docs/self-hosting.md` (build from source, local hosting, connect
+>   clients, install + upgrade + operator tasks), `docs/deployment.md` (env, TLS),
+>   and `docs/backup-restore.md` (backup/restore + recovery-code guidance).
+> - 7.1–7.4 are release-blocking human/manual activities (screen-reader audits,
+>   contrast/scaling checks, threat-model review + penetration test, end-to-end
+>   scenario runs) that require real assistive tech, testers, and deployed
+>   environments — not code.
