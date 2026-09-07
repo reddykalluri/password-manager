@@ -66,12 +66,19 @@ cd desktop && npm install && npm run tauri build
   [`docs/self-hosting.md`](docs/self-hosting.md) (build + host from source),
   [`docs/deployment.md`](docs/deployment.md) (reverse-proxy TLS), and
   [`docs/backup-restore.md`](docs/backup-restore.md) (runbook).
-- **Web** — served by the instance; `web/npm run build` produces the static SPA.
+- **Web** — served by the instance; build + architecture in
+  [`docs/web.md`](docs/web.md).
 - **Desktop** — [`docs/desktop.md`](docs/desktop.md).
 - **Extension** — installs locally with no store account (Load unpacked /
   temporary add-on): [`docs/extension.md`](docs/extension.md).
 - **Mobile** — UniFFI bindings and how the apps consume them:
   [`docs/mobile.md`](docs/mobile.md).
+
+## Documentation
+
+Full index in [`docs/`](docs/README.md), including the server
+[API reference](docs/api.md) and the [development guide](docs/development.md)
+(repo layout, per-surface build/test, CI, conventions).
 
 ## Crypto test vectors
 
@@ -104,3 +111,7 @@ Progress is tracked in
   prompts on real hardware, the extension running in a live browser, and the
   mobile apps (no Android SDK / Xcode). Those need the respective platform
   toolchains, certificates, or hardware.
+
+## License
+
+[AGPL-3.0-or-later](LICENSE).

@@ -22,13 +22,17 @@ by `scripts/first-run-test.sh`).
 |---|---|---|
 | `VAULT_BIND` | `0.0.0.0:8080` | Listen address. |
 | `VAULT_DATABASE_URL` | `sqlite:///data/vault.db` | sqlx URL (SQLite or Postgres). |
+| `VAULT_WEB_ROOT` | _unset_ | Directory of the built web client to serve (SPA). |
 | `VAULT_REGISTRATION` | `invite` | `open` for self-signup, else invite-only. |
 | `VAULT_PUBLIC_ORIGIN` | `http://localhost:8080` | Browser-visible URL (WebAuthn RP). |
 | `VAULT_OPERATOR_TOKEN` | _unset_ | Guards `/api/v1/admin/*`. Unset ⇒ admin disabled. |
 | `VAULT_TOKEN_KEY` | random | Access-token signing key; set for stable sessions. |
 | `VAULT_ACCESS_TTL_SECS` | `900` | Access-token lifetime (≤ 900, per spec). |
+| `VAULT_REFRESH_TTL_SECS` | `2592000` | Refresh-token lifetime (30 days). |
+| `VAULT_LOGIN_BACKOFF_THRESHOLD` | `10` | Failed logins before exponential backoff. |
 | `VAULT_BACKUP_DIR` | `data/backups` | Local backup directory. |
 | `VAULT_BACKUP_INTERVAL_SECS` | _unset_ | If set, run periodic backups. |
+| `VAULT_BACKUP_S3_*` | _unset_ | Off-site backup (build `--features s3`): `_ENDPOINT`, `_BUCKET`, `_REGION`, `_ACCESS_KEY`, `_SECRET_KEY`. |
 | `RUST_LOG` / `VAULT_LOG_FORMAT` | `info` / `json` | Log level / format. |
 
 ## TLS via a reverse proxy (recommended)
