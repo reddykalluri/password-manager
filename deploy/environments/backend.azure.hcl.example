@@ -1,0 +1,6 @@
+# Remote state for Azure. Add `terraform { backend "azurerm" {} }`, then:
+# tofu init -backend-config=environments/backend.azure.hcl
+resource_group_name  = "tofu-state"
+storage_account_name = "mytofustate"
+container_name       = "tfstate"
+key                  = "vault/ENV/terraform.tfstate"

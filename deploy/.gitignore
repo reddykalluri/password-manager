@@ -1,0 +1,15 @@
+# OpenTofu/Terraform working directory and state — never commit these.
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+# Local override and secret var files.
+*.auto.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# The provider lock file IS committed (pins provider versions) — do not ignore it.

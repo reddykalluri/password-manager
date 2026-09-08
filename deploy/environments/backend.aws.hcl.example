@@ -1,0 +1,7 @@
+# Remote state for AWS. Add a matching `terraform { backend "s3" {} }` block to
+# a backend.tf, then: tofu init -backend-config=environments/backend.aws.hcl
+bucket         = "my-tofu-state"
+key            = "vault/ENV/terraform.tfstate"
+region         = "us-east-1"
+dynamodb_table = "my-tofu-locks"
+encrypt        = true

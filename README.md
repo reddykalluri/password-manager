@@ -66,6 +66,8 @@ cd desktop && npm install && npm run tauri build
   [`docs/self-hosting.md`](docs/self-hosting.md) (build + host from source),
   [`docs/deployment.md`](docs/deployment.md) (reverse-proxy TLS), and
   [`docs/backup-restore.md`](docs/backup-restore.md) (runbook).
+- **Cloud (AWS/Azure/GCP)** — OpenTofu IaC in [`deploy/`](deploy/README.md) +
+  CD pipeline; guide in [`docs/cloud-hosting.md`](docs/cloud-hosting.md).
 - **Web** — served by the instance; build + architecture in
   [`docs/web.md`](docs/web.md).
 - **Desktop** — [`docs/desktop.md`](docs/desktop.md).

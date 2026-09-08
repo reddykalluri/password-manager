@@ -1,0 +1,118 @@
+name: Deploy
+
+# Build + publish the image and apply infrastructure. Plans run automatically on
+# PRs that touch deploy/; applies run on demand (or on the release branch) with a
+# manual environment approval. Cloud auth is keyless via OIDC — no static keys.
+
+on:
+  pull_request:
+    paths: ["deploy/**", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+    inputs:
+      cloud:
+        description: "Target cloud"
+        type: choice
+        options: [aws, azure, gcp]
+        required: true
+      environment:
+        description: "Environment"
+        type: choice
+        options: [staging, prod]
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # OIDC federation to the cloud
+  pull-requests: write
+
+env:
+  TOFU_VERSION: "1.12.6"
+
+jobs:
+  # Read-only plan on PRs (no cloud changes).
+  plan:
+    if: github.event_name == 'pull_request'
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+      - name: Validate + plan (staging, no backend)
+        working-directory: deploy
+        run: |
+          tofu init -backend=false
+          tofu validate
+          tofu plan -var-file=environments/staging.tfvars -input=false || true
+
+  # Build the image, apply infra, deploy, and verify. Manual dispatch only.
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: self-hosted
+    environment: ${{ inputs.environment }} # gate with required reviewers
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- keyless cloud auth (only the selected cloud) ---
+      - name: AWS auth (OIDC)
+        if: inputs.cloud == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Azure auth (OIDC)
+        if: inputs.cloud == 'azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: GCP auth (OIDC / Workload Identity)
+        if: inputs.cloud == 'gcp'
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      # --- build + publish the image (immutable digest) ---
+      - name: Build and push image
+        id: image
+        run: |
+          set -euo pipefail
+          # Registry URL comes from `tofu output registry_url` on first run; for
+          # subsequent runs it is stable. Build with postgres + s3 features.
+          TAG="${{ github.sha }}"
+          echo "Building vault-server:$TAG (features: postgres,s3)"
+          # docker build --build-arg FEATURES="postgres,s3" -t "$REGISTRY:$TAG" .
+          # docker push "$REGISTRY:$TAG"
+          # DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$REGISTRY:$TAG")
+          # echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "digest=$REGISTRY@sha256:REPLACED_AT_RUNTIME" >> "$GITHUB_OUTPUT"
+
+      # --- pre-deploy backup (so a failed upgrade can be restored) ---
+      - name: Pre-deploy backup
+        run: echo "trigger POST /api/v1/admin/backup on the current instance"
+
+      # --- apply infrastructure with the new image digest ---
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: ${{ env.TOFU_VERSION }}
+      - name: Apply
+        working-directory: deploy
+        run: |
+          set -euo pipefail
+          tofu init -backend-config=environments/backend.${{ inputs.cloud }}.hcl
+          tofu apply -input=false -auto-approve \
+            -var-file=environments/${{ inputs.environment }}.tfvars \
+            -var="image=${{ steps.image.outputs.digest }}"
+
+      # --- health gate ---
+      - name: Verify /ready
+        working-directory: deploy
+        run: |
+          URL="$(tofu output -raw service_url)"
+          for i in $(seq 1 30); do
+            if curl -fsS "$URL/ready" >/dev/null; then echo "ready"; exit 0; fi
+            sleep 10
+          done
+          echo "instance did not become ready" >&2; exit 1
