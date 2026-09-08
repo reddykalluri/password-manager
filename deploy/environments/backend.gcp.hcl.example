@@ -1,0 +1,4 @@
+# Remote state for GCP. Add `terraform { backend "gcs" {} }`, then:
+# tofu init -backend-config=environments/backend.gcp.hcl
+bucket = "my-tofu-state"
+prefix = "vault/ENV"
